@@ -1,0 +1,9 @@
+{
+  "name": "Cool Birthday",
+  "description": "Cool Birthday manager",
+  "uuid": "coolbirthday@mylo.cool",
+  "shell-version": [
+    "48"
+  ],
+  "url": "git@github.com:MyloRaccoon/CoolBirthday-GnomeExtension.git"
+}
