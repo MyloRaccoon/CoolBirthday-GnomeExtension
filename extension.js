@@ -25,8 +25,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
-let CHECK_CMD = ['/home/mylo/rust/coolbirthday/target/release/coolbirthday', 'check'];
-let LIST_CMD = ['/home/mylo/rust/coolbirthday/target/release/coolbirthday', 'list'];
+let CHECK_CMD = ['coolbirthday', 'check'];
+let LIST_CMD = ['coolbirthday', 'list'];
 
 export default class CoolBirthdayExtension extends Extension {
     enable() {
