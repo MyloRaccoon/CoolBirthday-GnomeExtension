@@ -5,9 +5,7 @@ Gnome extension for the [Cool Birthday](https://github.com/MyloRaccoon/CoolBirth
 ## Features
 - Quick check
 - List button
+- Add birthday button
 
 ## TODO list
-- Automatic find of the Cool Birthday Binary
-- Add birthday button
 - Remove birthday button
-- Nuke button
