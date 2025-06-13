@@ -42,16 +42,29 @@ export default class CoolBirthdayExtension extends Extension {
                 try {
                     const [, stdout] = proc.communicate_utf8_finish(res);
                     
-                    this._indicator = new PanelMenu.Button(0.0, this.metadata.name, false);
-                    const lbl_icon = new St.Label({ text: '🎈' });
-                    this._indicator.add_child(lbl_icon);
 
+                    const lbl_icon = new St.Label({ text: '🎈', y_align: Clutter.ActorAlign.CENTER });
+
+                    const icon_box = new St.BoxLayout({
+                        vertical: false,
+                        x_align: Clutter.ActorAlign.CENTER,
+                        y_align: Clutter.ActorAlign.CENTER,
+                        x_expand: true,
+                        y_expand: true,
+                    });
+                    icon_box.add_child(lbl_icon);
+
+                    this._indicator = new PanelMenu.Button(0.0, this.metadata.name, false);
+                    this._indicator.add_child(icon_box);
 
 
                     const info_item = new PopupMenu.PopupBaseMenuItem({ reactive: false });
                     this._lbl_info = new St.Label({ text: 'checking...' });
                     info_item.add_child(this._lbl_info);
                     this._indicator.menu.addMenuItem(info_item);
+
+
+                    this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
 
                     const btn_list = new PopupMenu.PopupMenuItem('List Birthdays');
@@ -62,6 +75,10 @@ export default class CoolBirthdayExtension extends Extension {
                     const btn_add = new PopupMenu.PopupMenuItem('Add Birthday');
                     btn_add.connect('activate', () => this._showAddDialog());
                     this._indicator.menu.addMenuItem(btn_add);
+
+                    const btn_remove = new PopupMenu.PopupMenuItem('Remove Birthday');
+                    btn_remove.connect('activate', () => this._showRemoveDialog());
+                    this._indicator.menu.addMenuItem(btn_remove);
 
 
                     this._indicator.menu.connect('open-state-changed', (_menu, isOpen) => {
@@ -182,31 +199,28 @@ export default class CoolBirthdayExtension extends Extension {
 
         const content = new St.BoxLayout({ vertical: true, style_class: 'polkit-dialog-main-layout' });
 
-        const lbl_title = new St.Label({ text: 'Register a new Birthday' });
+        const lbl_title = new St.Label({ text: 'Register a new Birthday', style_class: 'title-size title-margin' });
 
         const div_name = new St.BoxLayout({ vertical: false, styleClass: 'polkit-dialog-main-layout' });
-        const lbl_name = new St.Label({ text: "Enter the person's name :" });
-        const e_name = new St.Entry({ style_class: 'entry', text: '' });
+        const lbl_name = new St.Label({ text: "Enter the person's name:  " });
+        const e_name = new St.Entry({ style_class: 'entry', text: '', hint_text: 'name' });
         div_name.add_child(lbl_name);
         div_name.add_child(e_name);
 
-        const lbl_date = new St.Label({ text: "Enter the birthday date"});
-
         const div_month = new St.BoxLayout({ vertical: false, style_class: 'polkit-dialog-main-layout' });
-        const lbl_month = new St.Label({ text: "Enter the month of birth"});
+        const lbl_month = new St.Label({ text: "Enter the month of birth:  "});
         const e_month = new St.Entry({ style_class: 'entry', text: '', hint_text: 'from 1 to 12' });
         div_month.add_child(lbl_month);
         div_month.add_child(e_month);
 
         const div_day = new St.BoxLayout({ vertical: false, style_class: 'polkit-dialog-main-layout' });
-        const lbl_day = new St.Label({ text: "Enter the day of birth"});
+        const lbl_day = new St.Label({ text: "Enter the day of birth:  "});
         const e_day = new St.Entry({ style_class: 'entry', text: '', hint_text: 'from 1 to 31' });
         div_day.add_child(lbl_day);
         div_day.add_child(e_day);
 
         content.add_child(lbl_title);
         content.add_child(div_name);
-        content.add_child(lbl_date);
         content.add_child(div_month);
         content.add_child(div_day);
         dialog.contentLayout.add_child(content);
@@ -232,4 +246,81 @@ export default class CoolBirthdayExtension extends Extension {
 
         dialog.open();
     }
+
+    _get_birthdays() {
+        return new Promise((resolve, reject) => {
+            const proc = new Gio.Subprocess({
+                argv: LIST_CMD,
+                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+            });
+
+            try {
+                proc.init(null);
+                proc.communicate_utf8_async(null, null, (proc, res) => {
+                    try {
+                        const [, stdout] = proc.communicate_utf8_finish(res);
+                        let birthdays = [];
+
+                        if (stdout) {
+                            stdout.split('\n').forEach(ligne => {
+                                if (ligne.trim()) {
+                                    birthdays.push(ligne.split(':')[0]);
+                                }
+                            });
+                        }
+
+                        resolve(birthdays);
+                    } catch (e) {
+                        logError(e, 'Erreur lors de l’exécution de la commande');
+                        resolve([]);
+                    }
+                });
+            } catch (e) {
+                logError(e, 'Erreur d’initialisation de la commande');
+                resolve([]);
+            }
+        });
+    }
+
+    _showRemoveDialog() {
+        const dialog = new ModalDialog.ModalDialog({ styleClass: null });
+
+        const lbl_title = new St.Label({ text: 'Remove a Birthday', style_class: 'title-size' });
+
+        const sv_btns = new St.ScrollView({
+            height: 300,
+            hscrollbar_policy: 2,
+            vscrollbar_policy: 2,
+            enable_mouse_scrolling: true
+        });
+
+        const vbox = new St.BoxLayout({ vertical: true });
+
+        this._get_birthdays().then(birthdays => {
+            birthdays.forEach(birthday => {
+                const btn = new St.Button({ label: birthday, style_class: 'system-menu-action' });
+                btn.connect('clicked', () => {
+                    this._cmdNotify(['coolbirthday', 'remove', birthday]);
+                    dialog.close();
+                });
+                vbox.add_child(btn);
+            });
+        });
+
+        sv_btns.add_child(vbox);
+        dialog.contentLayout.add_child(lbl_title);
+        dialog.contentLayout.add_child(sv_btns);
+    
+        dialog.setButtons([
+            {
+                label: "Cancel",
+                action: () => dialog.close(),
+                key: Clutter.Escape,
+            }
+        ]);
+
+        dialog.open();
+    }
+
+    
 }
